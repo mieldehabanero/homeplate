@@ -2,9 +2,84 @@
 
 This guide covers building, flashing, and debugging HomePlate using [PlatformIO](https://platformio.org/). For general installation and setup, see the [README](README.md) and [Setup Guide](setup.md).
 
+## Container development
+
+Use Docker for development, dependencies, and tests. The wrapper builds the
+development image and stores PlatformIO toolchains in the shared
+`homeplate-platformio` Docker volume. It supports both normal clones and the
+bare-repository worktree layout; the common Git directory is mounted read-only
+so firmware version detection works inside the container.
+
+```shell
+sh scripts/dev pio test -e native
+sh scripts/dev pio run -e inkplate10v2
+sh scripts/dev pio run  # build all default board environments
+```
+
+Run the PlatformIO commands below through `sh scripts/dev` as well. Project
+dependencies are installed in the container, with build output under `.pio/`.
+USB device passthrough depends on the Docker host; a compiled `firmware.bin` can
+also be uploaded through the existing device's setup portal.
+
+## Experimental Inkplate 10 v2 four-gray image updates
+
+On this branch, the `inkplate10v2` environment uses the pinned FastEPD library for
+whole-image updates. The existing PNG/BMP/JPEG decoder renders its usual eight
+gray levels, then they are quantized to four: black, dark gray, light gray, and
+white. Each image is sent with `fullUpdate(CLEAR_NONE, false)`, without a
+black/white clearing cycle or a comparison against the previous image. This
+also works after deep sleep without saving the previous framebuffer.
+
+FastEPD handles the parallel pixel transfers. Its custom panel callbacks use
+Inkplate's existing PMIC, factory VCOM, and shared expander state. The LCD bus is
+released after each image update so the normal Inkplate drawing path can still
+show other activities. Progress text is logged to serial instead of being
+painted over an image. Failed decodes never send an incomplete image to FastEPD.
+
+This is an experiment for the Inkplate 10 **v2** only. Other board environments
+use their existing drivers. Non-image screens, startup, and low-battery overlays
+still use the existing refresh behavior and may flash. Gray pixels can visibly
+transition through intermediate colors even without a whole-screen clearing
+flash. Repeated no-clear updates may cause ghosting or reduced contrast; show
+the Info activity to perform a normal clearing refresh when needed. No automatic
+clearing interval is added by this experiment.
+
+### Hardware verification
+
+```shell
+sh scripts/dev python scripts/gray4-test-images.py
+```
+
+The command produces two 1200x825 PNGs in `.pio/gray4-test/`. Host these images at
+URLs reachable by the Inkplate and display them using the existing MQTT Image
+URL action, or use equivalent dashboard images.
+
+Expected test pattern (this is a generated reference, not a panel photograph):
+
+![Four-shade test pattern with digits, checkerboard, and corner markers](screenshots/fastepd-shades.png)
+
+1. Flash `.pio/build/inkplate10v2/firmware.bin` onto an Inkplate 10 v2. Confirm the
+   serial log reports `FastEPD four-gray backend: ready` and a successful
+   `CLEAR_NONE` update.
+2. Display `shades.png`: expect four distinct vertical shades, digits 0–3 from
+   left to right, a centered checkerboard, and all four corner markers. Confirm
+   the image is neither mirrored nor cropped.
+3. Alternate `shades.png` and `shades-inverted.png`: expect both light-to-dark
+   and dark-to-light transitions without a whole-screen black/white wipe.
+4. Repeat at least 20 times and record ghosting and contrast. Switch to Info,
+   then return to the test images; expect a clean image and working refreshes.
+5. Repeat across timer deep-sleep wakes and in always-on mode. Confirm images,
+   battery/temperature reporting, RTC, and the wake button still work.
+6. Request a malformed image: expect a decode failure in the serial log, no
+   FastEPD frame submission, and the previous image retained.
+
+Native tests and compilation cannot establish visual quality, flicker, power
+sequencing on the physical board, or long-term ghosting. These hardware checks
+must be completed before treating this backend as verified.
+
 ## Building
 
-Install [PlatformIO](https://platformio.org/) and build for your board variant. You must always specify `-e <board>`:
+Build for your board variant with PlatformIO in the container:
 
 ```shell
 pio run -e inkplate5       # Inkplate 5
@@ -132,7 +207,7 @@ The available unit tests use the 'native' environment and can be run by either:
 * running them manually
 
 ```shell
-pio test -v
+sh scripts/dev pio test -e native -v
 ```
 
 * in VSCode use Testing -> native -> Run Test
