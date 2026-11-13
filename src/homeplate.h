@@ -171,6 +171,10 @@ void displayInfoScreen();
 
 // Image
 bool drawImageFromURL(const char *url);
+#ifdef HOMEPLATE_FASTEPD_IMAGES
+// Caller holds the display and I2C locks. Only complete decoded images are sent.
+bool displayImageNoClear(bool decoded);
+#endif
 // Returns true if it painted anything at all — including the error banner it
 // draws when the decode fails. Pass renderOk to learn whether the *image*
 // actually rendered, which is a stricter condition than the return value.

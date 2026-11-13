@@ -462,6 +462,11 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
     }
     else
     {
+#ifdef HOMEPLATE_FASTEPD_IMAGES
+        // Keep the previous image on the glass when decoding is incomplete.
+        Serial.println("[IMAGE][ERROR] decode failed, retaining displayed image");
+        return false;
+#else
         // If something failed (wrong filename or format), write error message on
         // the screen — unless a new activity has been queued, in which case
         // skip the banner so it doesn't clobber message[] / steal the screen
@@ -474,6 +479,7 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
 #endif
             displayCriticalMessage("Image Display Error");
         }
+#endif
     }
     // check for stop (could have happened inside drawPngFromBuffer())
     if (stopActivity())
@@ -486,16 +492,21 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
     Serial.println("[IMAGE] displaying....");
     i2cStart();
     displayStart();
+#ifdef HOMEPLATE_FASTEPD_IMAGES
+    bool displayed = displayImageNoClear(good);
+#else
+    bool displayed = true;
     displayRefresh();
+#endif
     // wait before releasing the i2c bus while the display settles. Helps prevent image fading
     vTaskDelay(0.25 * SECOND/portTICK_PERIOD_MS);
     displayEnd();
     i2cEnd();
     Serial.println("[IMAGE] displaying done.");
     if (renderOk) {
-        *renderOk = good;
+        *renderOk = good && displayed;
     }
-    return true;
+    return displayed;
 }
 
 // returns height
@@ -531,7 +542,7 @@ void displayStatusMessage(const char *format, ...)
 
     Serial.printf("[STATUS] %s\n", statusBuffer);
 
-#ifdef INKPLATE_HAS_PARTIAL_UPDATE
+#if defined(INKPLATE_HAS_PARTIAL_UPDATE) && !defined(HOMEPLATE_FASTEPD_IMAGES)
     // Partial-paint counterpart to the invalidation in displayRefresh. Most
     // status text outlives the call — "Image Download Failed", "WiFi failed!",
     // an OTA error — with no full repaint behind it to clear it. Skipping the
