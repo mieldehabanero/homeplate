@@ -1,5 +1,8 @@
 #include <HTTPClient.h> // HTTP_CODE_NOT_MODIFIED
 #include "homeplate.h"
+#ifdef ARDUINO_INKPLATE10V2
+#include "grayscale_png_dispatch.h"
+#endif
 
 #define IMAGE_HTTP_REQUEST_TIMEOUT 15
 
@@ -438,8 +441,32 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
         displayStart();
         switch(img.type) {
             case ImageType::PNG:
+#ifdef ARDUINO_INKPLATE10V2
+            {
+                grayscale_png::Target target = {
+                    display.DMemory4Bit, E_INK_WIDTH * E_INK_HEIGHT / 2,
+                    E_INK_WIDTH, E_INK_HEIGHT, E_INK_WIDTH / 2,
+                    static_cast<uint32_t>(xLoc), static_cast<uint32_t>(yLoc)
+                };
+                grayscale_png::Options options;
+                options.dither = useDither;
+                options.rotation = display.getRotation();
+                options.cancelled = [](void *) { return stopActivity(); };
+                grayscale_png::Result result;
+                good = grayscale_png::render(buff, size, target, options, [&]() {
+                    return display.image.drawPngFromBuffer(buff, size, xLoc, yLoc, useDither, false);
+                }, &result);
+                if (result != grayscale_png::Result::Unsupported) {
+                    Serial.printf("[IMAGE] Grayscale PNG decoder: %s\n",
+                        result == grayscale_png::Result::Rendered ? "done" :
+                        result == grayscale_png::Result::Cancelled ? "cancelled" : "invalid PNG");
+                }
+                break;
+            }
+#else
                 good = display.image.drawPngFromBuffer(buff, size, xLoc, yLoc, useDither, false);
                 break;
+#endif
             case ImageType::BMP:
                 good = display.image.drawBitmapFromBuffer(buff, xLoc, yLoc, useDither, false);
                 break;
