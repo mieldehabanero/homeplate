@@ -1,0 +1,32 @@
+[
+  {
+    "comparison": "A->B",
+    "saved_ms": 2361.01,
+    "saved_percent": 21.991761460909974,
+    "non_download_saved_ms": 1880.705
+  },
+  {
+    "comparison": "B->C",
+    "saved_ms": 2536.496,
+    "saved_percent": 30.286975063744244,
+    "non_download_saved_ms": 2654.5225
+  },
+  {
+    "comparison": "C->D",
+    "saved_ms": 2436.984,
+    "saved_percent": 41.74077115253586,
+    "non_download_saved_ms": 2090.126
+  },
+  {
+    "comparison": "D->E",
+    "saved_ms": 805.4645,
+    "saved_percent": 23.68042337935564,
+    "non_download_saved_ms": 38.757
+  },
+  {
+    "comparison": "A->E",
+    "saved_ms": 8139.9545,
+    "saved_percent": 75.82006754171339,
+    "non_download_saved_ms": 6664.1105
+  }
+]

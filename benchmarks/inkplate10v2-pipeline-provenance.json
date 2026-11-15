@@ -1,0 +1,112 @@
+{
+  "firmware": {
+    "original": {
+      "bytes": 1552256,
+      "sha256": "8172098d563678cc1d045cc498ebda9c0b25ac415645630be649161b7e11ecba",
+      "source_sha256": {
+        "image.cpp": "1993a26de318ec594c5978ae35beffc64152ce5e42f1cc94b58e80469a876db9",
+        "network.cpp": "d3855fee2b9f43a1bfde29660ae00adb9e5674477af05ab5d8b89488b5142ab6",
+        "main.cpp": "e1e96effbbc724e193921339be8585eb2006418396023aa1423687c14a27aab1",
+        "pipeline_runner.cpp": "8e9985594d8e864af6eb2e8a536177d3311e8a9bb9f00bb6937696804205cfd2",
+        "pipeline_trace.h": "92c5cc3cbfeb4fb4b8b791e38c61551b015fb48ef8670a922489121bc5b32a20"
+      }
+    },
+    "fastpath": {
+      "bytes": 1554560,
+      "sha256": "60bd60a11c9c04f481b67cbc982ec928078d5b7cf105f3f63ed97c7411baedf7",
+      "source_sha256": {
+        "image.cpp": "f7edab9d6dac78db269146fb02412a9d9c9df8b1c0d3985b8ab1d6206371f515",
+        "network.cpp": "d3855fee2b9f43a1bfde29660ae00adb9e5674477af05ab5d8b89488b5142ab6",
+        "main.cpp": "e1e96effbbc724e193921339be8585eb2006418396023aa1423687c14a27aab1",
+        "pipeline_runner.cpp": "8e9985594d8e864af6eb2e8a536177d3311e8a9bb9f00bb6937696804205cfd2",
+        "pipeline_trace.h": "92c5cc3cbfeb4fb4b8b791e38c61551b015fb48ef8670a922489121bc5b32a20"
+      }
+    },
+    "quiet": {
+      "bytes": 1555152,
+      "sha256": "cd4c12945cc365dec592a641a8881ecf42834a9217ff8a56b7996fc3e074a9e0",
+      "source_sha256": {
+        "image.cpp": "2f0062030cdc2ef247f3f63d7ccbd6ba05edda1505b8bbf46b608e6317e56c07",
+        "network.cpp": "84b8bc84970456049fa9d5bc0c8514abe5e410a02e38c9862dfdb0f8240f176d",
+        "main.cpp": "beb956be8b4f6bd6910ef5bec7819173b4a24f5b8115053cafe70803699ac6e3",
+        "pipeline_runner.cpp": "8e9985594d8e864af6eb2e8a536177d3311e8a9bb9f00bb6937696804205cfd2",
+        "pipeline_trace.h": "92c5cc3cbfeb4fb4b8b791e38c61551b015fb48ef8670a922489121bc5b32a20"
+      }
+    },
+    "no_clear": {
+      "bytes": 1555200,
+      "sha256": "68895dd338550c3e17498c2fadd43014cb5674d122d8278079cf389b2d57bd01",
+      "source_sha256": {
+        "image.cpp": "1312cfe5561f31f4875bd730e8aa2ec39d8246abb6553fe8c0c4df4f4975e2f3",
+        "network.cpp": "84b8bc84970456049fa9d5bc0c8514abe5e410a02e38c9862dfdb0f8240f176d",
+        "main.cpp": "beb956be8b4f6bd6910ef5bec7819173b4a24f5b8115053cafe70803699ac6e3",
+        "pipeline_runner.cpp": "8e9985594d8e864af6eb2e8a536177d3311e8a9bb9f00bb6937696804205cfd2",
+        "pipeline_trace.h": "92c5cc3cbfeb4fb4b8b791e38c61551b015fb48ef8670a922489121bc5b32a20"
+      }
+    }
+  },
+  "instrumentation_sha256": {
+    "trace.h": "92c5cc3cbfeb4fb4b8b791e38c61551b015fb48ef8670a922489121bc5b32a20",
+    "runner.cpp": "8e9985594d8e864af6eb2e8a536177d3311e8a9bb9f00bb6937696804205cfd2"
+  },
+  "started_utc": "2026-11-15T19:53:20.216880+00:00",
+  "serial_transport": "direct_usb",
+  "baud": 115200,
+  "conditions": {
+    "images": {
+      "color.png": {
+        "bytes": 123823,
+        "sha256": "5163da85e5073740adda4e243271a96388b186514598818707b3049338ca32e6",
+        "width": 1200,
+        "height": 825,
+        "depth": 8,
+        "color_type": 2
+      },
+      "grayscale.png": {
+        "bytes": 30326,
+        "sha256": "ce68ae086fc04bee0296e0f8876af6483ed6573988f5f4287bcfea908e6ae4ce",
+        "width": 1200,
+        "height": 825,
+        "depth": 4,
+        "color_type": 0
+      }
+    },
+    "profiles": {
+      "original": [
+        "7689bc8",
+        [
+          "A",
+          "B"
+        ]
+      ],
+      "fastpath": [
+        "b140c23",
+        [
+          "C"
+        ]
+      ],
+      "quiet": [
+        "db51faf",
+        [
+          "D"
+        ]
+      ],
+      "no_clear": [
+        "64ab314",
+        [
+          "E"
+        ]
+      ]
+    },
+    "warmups": 2,
+    "measured_runs": 20,
+    "timestamp": false,
+    "dither": false,
+    "cpu_mhz": 240
+  },
+  "restore_status": {
+    "restored": true,
+    "settings_unchanged": true,
+    "application_unchanged": true
+  }
+}

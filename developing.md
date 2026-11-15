@@ -91,6 +91,10 @@ This setting only affects the four special-purpose envs above. The default board
 
 ## Serial Monitoring
 
+For a controlled comparison of image download, decoding, progress updates, and
+the final panel refresh across historical firmware, see the
+[download-to-panel benchmark](benchmarks/pipeline.md).
+
 To monitor serial output without re-flashing:
 
 ```shell
