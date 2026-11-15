@@ -236,7 +236,7 @@ bool trmnlDisplay(const char *url)
     {
         // grab the image and display it
         String image_url = doc["image_url"].as<String>();
-        displayStatusMessage("Loading next image...");
+        displayProgressMessage("Loading next image...");
         bool ret = drawImageFromURL(image_url.c_str());
         if (!ret) {
             // If a new activity has been queued (e.g. MQTT Display Message),

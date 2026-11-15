@@ -42,7 +42,7 @@ FontSizing findFontSizeFit(const char *m, uint16_t max_width, uint16_t max_heigh
 // displayCriticalMessage: like displayStatusMessage, but falls back to a
 // full-screen displayMessage() on boards without partial update (where
 // displayStatusMessage is a no-op). Use for error/state messages that must
-// be visible; use displayStatusMessage for progress that's OK to drop.
+// be visible; use displayProgressMessage for routine progress that can be disabled.
 void displayCriticalMessage(const char *format, ...)
 {
     char buf[256];
