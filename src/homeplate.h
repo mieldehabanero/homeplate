@@ -185,7 +185,7 @@ void invalidateImageCache();
 // True when this wake may end in a skipped render (we hold validators for an
 // image believed to still be on the panel). Progress text painted before that
 // is known would be stranded on the glass by the skip, so callers of
-// displayStatusMessage that run early in a wake should gate on this.
+// displayProgressMessage that run early in a wake should gate on this.
 bool imageCacheArmed();
 
 // Dither
@@ -204,6 +204,8 @@ size_t buildDitherOptionsJson(char *out, size_t outSize);
 const char *ditherKernelName(uint8_t value);
 uint16_t centerTextX(const char *t, int16_t x1, int16_t x2, int16_t y, bool lock = true);
 void displayStatusMessage(const char *format, ...);
+// Routine progress is always logged; panel painting follows Show Progress Messages.
+void displayProgressMessage(const char *format, ...);
 void displayCriticalMessage(const char *format, ...);
 void splashScreen();
 void displayRefresh();

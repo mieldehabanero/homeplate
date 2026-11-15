@@ -100,10 +100,10 @@ void setup()
     // a 304 skips the full repaint that would otherwise wipe this text, which
     // would strand "Boot 42 TIMER" over an unchanged image until something
     // next redraws — possibly hours on a static dashboard. On a cold boot the
-    // cache is zeroed, so the message still appears when it's most useful.
+    // cache is zeroed, so Show Progress Messages controls whether it appears.
     if (!imageCacheArmed())
     {
-        displayStatusMessage("Boot %d %s", bootCount, bootReason());
+        displayProgressMessage("Boot %d %s", bootCount, bootReason());
     }
     else
     {

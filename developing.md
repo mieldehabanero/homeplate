@@ -4,7 +4,23 @@ This guide covers building, flashing, and debugging HomePlate using [PlatformIO]
 
 ## Building
 
-Install [PlatformIO](https://platformio.org/) and build for your board variant. You must always specify `-e <board>`:
+Build and test in Docker; the image pins [PlatformIO](https://platformio.org/) to the same version as CI:
+
+```shell
+docker build -t homeplate-grayscale-dev .
+sh scripts/container.sh pio run -e inkplate10v2
+```
+
+The wrapper mounts the repository's common parent so Git worktrees resolve correctly,
+and shares the `homeplate-platformio` Docker volume for toolchains and downloaded
+packages. Project dependencies and build tools are installed inside the container.
+The wrapper also passes the host's Git version label into the build, including
+when the host uses a newer worktree format than the container's Git supports.
+Invoke it from the selected worktree. The PlatformIO examples below show the
+commands to pass to this wrapper; USB flashing additionally needs access to the
+serial device from the container host.
+
+Build for your board variant. You must always specify `-e <board>`:
 
 ```shell
 pio run -e inkplate5       # Inkplate 5
@@ -75,6 +91,10 @@ This setting only affects the four special-purpose envs above. The default board
 
 ## Serial Monitoring
 
+For a controlled comparison of image download, decoding, progress updates, and
+the final panel refresh across historical firmware, see the
+[download-to-panel benchmark](benchmarks/pipeline.md).
+
 To monitor serial output without re-flashing:
 
 ```shell
@@ -127,16 +147,127 @@ Older Inkplates don't appear to ship with an updated waveform. I found waveform 
 
 ## Tests
 
-The available unit tests use the 'native' environment and can be run by either:
-
-* running them manually
+Run the existing unit tests, the grayscale PNG suite, and its sanitizer build in the container:
 
 ```shell
-pio test -v
+sh scripts/container.sh pio test -e native -e native_png -e native_png_sanitize
 ```
 
-* in VSCode use Testing -> native -> Run Test
-* in VSCode use PlatformIO -> Project Tasks -> native -> Advanced -> Test
+`native_png` downloads only the portable pngle/miniz sources from the exact Inkplate
+revision in `platformio.ini`. It compares the shortcut with the original pngle
+decoder and exercises packing, every PNG filter, split IDAT chunks, invalid data,
+fallback, cancellation, and allocation failures. `native_png_sanitize` runs the
+same suite with address and undefined-behavior sanitizers. Generated fixtures and
+dependency sources stay under `.pio/`.
+
+## Grayscale PNG decoder
+
+The Inkplate 10v2 automatically uses a row-based shortcut for opaque grayscale
+PNGs (PNG color type 0) with 1-, 2-, 4-, or 8-bit samples, no interlacing, and
+dithering off. The image must fit within the display in rotation 0. Both centered
+and top-left placement work, including odd widths and offsets.
+
+RGB, palette, grayscale with alpha, `tRNS` transparency, animated, interlaced,
+16-bit, oversized, and rotated images use the existing Inkplate decoder. Other
+boards also keep that decoder. Dither configuration and HTTP/MQTT overrides still
+determine whether the shortcut is eligible. No new setting is required.
+
+The shortcut reuses the Inkplate library's miniz inflater and keeps two original
+scanlines for PNG filtering. It writes two output pixels per framebuffer byte,
+without expanding samples into RGB or calling `drawPixel()` per pixel. Input PNG
+chunks retain CRC checking, and the compressed stream retains Adler checking.
+Malformed eligible images fail the render; they are not retried through fallback.
+Allocation failure falls back before any pixels are written.
+
+For full-screen 1200×825 images placed at (0, 0), a successful shortcut also
+skips the initial framebuffer clear: decoding overwrites every pixel, avoiding
+a redundant 495,000-byte memory fill. Smaller images still clear first to leave
+a white background outside the image. If a full-screen PNG needs the existing
+decoder, including because shortcut workspace allocation failed, the framebuffer
+is cleared before fallback. Invalid and cancelled renders retain their existing
+cleanup behavior. This does not change the physical panel refresh or its settling
+delay. The measurements below exclude framebuffer clearing and do not measure
+the additional saving from skipping it.
+
+Output matches the current non-dithered decoder: 1-bit samples map to 0/7, 2-bit
+samples to 0/2/5/7, 4-bit samples use `sample >> 1`, and 8-bit samples use
+`sample >> 5`. Gamma metadata retains the current decoder's treatment; this
+shortcut does not introduce color management. Export an actual grayscale PNG to
+use it: an RGB PNG whose channels happen to be equal still follows the general
+decoder.
+
+### Measuring PNG performance
+
+Run the portable full-screen comparison inside Docker:
+
+```shell
+sh scripts/container.sh python3 scripts/benchmark_png_native.py
+```
+
+This generates twelve 1200×825 fixtures: dashboard patterns, gradients, and
+detailed patterns at each supported bit depth. It alternates the decoder order,
+discards two warmups, measures twenty runs per decoder, and checks the entire
+framebuffer after every decode. CSV output includes median/minimum/maximum times,
+speedup, compressed size, and shortcut workspace bytes. The original pngle path
+uses a reference pixel writer in this container benchmark; these results are not
+ESP32 timings or measurements of panel refresh speed.
+
+For measurements on the Inkplate 10v2, build the separate benchmark application:
+
+```shell
+sh scripts/container.sh pio run -e benchmark_grayscale_png
+```
+
+The binary is `.pio/build/benchmark_grayscale_png/firmware.bin`. Flash it using
+your normal firmware flashing procedure and capture serial output at 115200 baud.
+It runs the same comparisons against the actual `display.image.drawPngFromBuffer()`
+implementation, with compressed input and framebuffers in PSRAM. It reports the
+minimum free heap observed as well as workspace size. The benchmark does not
+connect to WiFi or run the normal dashboard application; restore the normal
+firmware after testing.
+
+To also time decoding plus full panel refresh and the normal 250 ms settling
+delay, add `-DHOMEPLATE_BENCHMARK_REFRESH` to the benchmark environment's build
+flags before building. This performs a full refresh for each decoder and fixture.
+The benchmark environment is excluded from default builds and release artifacts.
+
+Hardware measurements on an Inkplate 10v2 (2026-11-15, implementation commit
+`ccf1177`, CPU configured at 240 MHz) produced these results for each full-screen
+pattern. Times are seconds; each pair shows original → direct decoding.
+
+| PNG depth | Pattern | Decode | Decode speedup | Decode + refresh + settle |
+|---|---|---:|---:|---:|
+| 1 bit | Dashboard | 2.646 → 0.226 | 11.71× | 4.707 → 2.286 |
+| 1 bit | Gradient | 2.638 → 0.225 | 11.72× | 4.698 → 2.285 |
+| 1 bit | Detailed | 2.639 → 0.226 | 11.67× | 4.701 → 2.289 |
+| 2 bits | Dashboard | 2.753 → 0.272 | 10.13× | 4.815 → 2.333 |
+| 2 bits | Gradient | 2.731 → 0.271 | 10.09× | 4.792 → 2.332 |
+| 2 bits | Detailed | 2.735 → 0.275 | 9.94× | 4.797 → 2.336 |
+| **4 bits** | **Dashboard** | **2.859 → 0.229** | **12.50×** | **4.921 → 2.291** |
+| **4 bits** | **Gradient** | **2.858 → 0.227** | **12.60×** | **4.921 → 2.289** |
+| **4 bits** | **Detailed** | **2.865 → 0.234** | **12.23×** | **4.929 → 2.297** |
+| 8 bits | Dashboard | 3.101 → 0.388 | 7.98× | 5.163 → 2.450 |
+| 8 bits | Gradient | 3.087 → 0.385 | 8.03× | 5.150 → 2.448 |
+| 8 bits | Detailed | 3.101 → 0.398 | 7.79× | 5.165 → 2.461 |
+
+For 4-bit PNGs, decoding plus a full panel refresh and the 250 ms settling delay
+took 4.921–4.929 s with the original decoder and 2.289–2.297 s with the shortcut:
+about 2.63 s saved, or 53% less time for that stage. Network transfer, framebuffer
+clearing, and progress-message painting are outside these measurements. Each
+full-refresh observation is one run per decoder and fixture; decode-only medians
+use twenty measured runs after two warmups, alternating decoder order.
+
+All 528 framebuffer comparisons matched byte for byte across the twelve fixtures.
+The device owner reported normal-looking patterns during the run. The 4-bit path
+allocated 44,962 bytes of temporary decoder workspace. Static firmware RAM usage
+was unchanged; a build comparison with the same version label added 2,372 bytes
+of flash. The [complete hardware measurements](benchmarks/inkplate10v2-grayscale.csv)
+include individual fixtures, timing ranges, workspace sizes, and refresh observations.
+After testing, the normal optimized firmware booted with its existing configuration,
+connected to WiFi and MQTT, and rendered an image through the shortcut. The first
+64 KiB of flash, covering the bootloader, partition table, NVS, and OTA selection
+data, matched the full backup byte for byte before and after the application-only
+update.
 
 ## Advanced: Compile-Time Configuration
 

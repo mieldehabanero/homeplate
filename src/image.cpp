@@ -1,5 +1,8 @@
 #include <HTTPClient.h> // HTTP_CODE_NOT_MODIFIED
 #include "homeplate.h"
+#ifdef ARDUINO_INKPLATE10V2
+#include "grayscale_png_dispatch.h"
+#endif
 
 #define IMAGE_HTTP_REQUEST_TIMEOUT 15
 
@@ -304,13 +307,13 @@ bool drawImageFromURL(const char *url) {
             reqHeaders["If-Modified-Since"] = imgLastModified;
     }
 
-    // displayStatusMessage paints on the panel, and a 304 skips the full update
+    // displayProgressMessage may paint on the panel, and a 304 skips the full update
     // that would otherwise wipe it — leaving "Downloading image..." stranded
     // over an image that never changed. Only announce the download when a
     // render is certain to follow.
     if (!conditional)
     {
-        displayStatusMessage("Downloading image...");
+        displayProgressMessage("Downloading image...");
     }
 
     // Intentionally the compile-time E_INK_* constants: this is a buffer size,
@@ -393,17 +396,39 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
     if (renderOk) {
         *renderOk = false;
     }
-    displayStatusMessage("Rendering image...");
+    displayProgressMessage("Rendering image...");
+
+    uint8_t effectiveKernel = (ditherOverride < 0) ? plateCfg.ditherKernel : (uint8_t)ditherOverride;
+    bool useDither = effectiveKernel != 0;
+    auto img = getImageInfo(buff, size);
+    int xLoc = 0;
+    int yLoc = 0;
+    if (center) {
+        if (img.width < HP_WIDTH) {
+            xLoc = (HP_WIDTH - img.width) / 2;
+        }
+        if (img.height < HP_HEIGHT) {
+            yLoc = (HP_HEIGHT - img.height) / 2;
+        }
+    }
 
     displayStart();
 #ifdef INKPLATE_HAS_DISPLAY_MODES
     display.selectDisplayMode(DISPLAY_MODE); // set grayscale mode
 #endif
-    display.clearDisplay();                   // refresh the display buffer before rendering.
+#ifdef ARDUINO_INKPLATE10V2
+    // A full-frame shortcut overwrites every pixel. Let the decoder establish
+    // PNG eligibility; its fallback below clears first if it cannot use the shortcut.
+    const bool deferClear = img.type == ImageType::PNG &&
+        img.width == E_INK_WIDTH && img.height == E_INK_HEIGHT &&
+        xLoc == 0 && yLoc == 0 && !useDither && display.getRotation() == 0;
+    if (!deferClear)
+#endif
+    {
+        display.clearDisplay();
+    }
     displayEnd();
 
-    uint8_t effectiveKernel = (ditherOverride < 0) ? plateCfg.ditherKernel : (uint8_t)ditherOverride;
-    bool useDither = effectiveKernel != 0;
     if (useDither) {
         // display.image is `Image` on B&W boards and `ImageColor` on the 6COLOR
         // board; both expose a class-local DitherKernel enum with identical
@@ -416,30 +441,48 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
         (ditherOverride >= 0) ? " (override)" : "");
 
     bool good = false;
-    auto img = getImageInfo(buff, size);
     if (img.type == ImageType::UNKNOWN) {
         Serial.println("[IMAGE][ERROR] Image render unknown type!");
         displayCriticalMessage("Unsupported Image");
         good = false;
     } else {
         Serial.printf("[IMAGE] Detected image as %s %dx%d\n", imageTypeToString(img.type), img.width, img.height);
-        int xLoc = 0;
-        int yLoc = 0;
         if (center) {
-            if (img.width < HP_WIDTH) {
-                xLoc = (HP_WIDTH - img.width) / 2;
-            }
-            if (img.height < HP_HEIGHT) {
-                yLoc = (HP_HEIGHT - img.height) / 2;
-            }
             Serial.printf("[IMAGE] Centering Image at %dx%d\n",xLoc, yLoc);
         }
         // display the image
         displayStart();
         switch(img.type) {
             case ImageType::PNG:
+#ifdef ARDUINO_INKPLATE10V2
+            {
+                grayscale_png::Target target = {
+                    display.DMemory4Bit, E_INK_WIDTH * E_INK_HEIGHT / 2,
+                    E_INK_WIDTH, E_INK_HEIGHT, E_INK_WIDTH / 2,
+                    static_cast<uint32_t>(xLoc), static_cast<uint32_t>(yLoc)
+                };
+                grayscale_png::Options options;
+                options.dither = useDither;
+                options.rotation = display.getRotation();
+                options.cancelled = [](void *) { return stopActivity(); };
+                grayscale_png::Result result;
+                good = grayscale_png::render(buff, size, target, options, [&]() {
+                    if (deferClear) {
+                        display.clearDisplay();
+                    }
+                    return display.image.drawPngFromBuffer(buff, size, xLoc, yLoc, useDither, false);
+                }, &result);
+                if (result != grayscale_png::Result::Unsupported) {
+                    Serial.printf("[IMAGE] Grayscale PNG decoder: %s\n",
+                        result == grayscale_png::Result::Rendered ? "done" :
+                        result == grayscale_png::Result::Cancelled ? "cancelled" : "invalid PNG");
+                }
+                break;
+            }
+#else
                 good = display.image.drawPngFromBuffer(buff, size, xLoc, yLoc, useDither, false);
                 break;
+#endif
             case ImageType::BMP:
                 good = display.image.drawBitmapFromBuffer(buff, xLoc, yLoc, useDither, false);
                 break;
@@ -517,6 +560,25 @@ uint16_t centerTextX(const char *t, int16_t x1, int16_t x2, int16_t y, bool lock
     if (lock)
         displayEnd();
     return h;
+}
+
+// NOTE I2C & display locks MUST NOT be held by caller.
+void displayProgressMessage(const char *format, ...)
+{
+    char buf[100];
+    va_list argptr;
+    va_start(argptr, format);
+    vsnprintf(buf, sizeof(buf), format, argptr);
+    va_end(argptr);
+
+    if (plateCfg.showProgressMessages)
+    {
+        displayStatusMessage("%s", buf);
+    }
+    else
+    {
+        Serial.printf("[STATUS] %s\n", buf);
+    }
 }
 
 // NOTE I2C & display locks MUST NOT be held by caller.

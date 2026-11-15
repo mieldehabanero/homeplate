@@ -35,7 +35,7 @@ void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
     char ip_str[16];
     WiFi.localIP().toString().toCharArray(ip_str, sizeof(ip_str));
     Serial.printf("[WIFI] IP address: %s\n", ip_str);
-    displayStatusMessage("WiFi connected");
+    displayProgressMessage("WiFi connected");
 }
 
 // wifiReasonName: human readable name for a WIFI_REASON_* code. The core's

@@ -49,6 +49,7 @@ HomePlate supports multiple display modes called activities. See [activities.md]
 * Skips the e-ink refresh when the image server reports the image is unchanged.
 * Display any image from MQTT command
 * Supports PNG, BMP, and JPEG images
+* Direct grayscale PNG decoding on Inkplate 10v2 when dithering is off — see the [decoder details](developing.md#grayscale-png-decoder).
 
 ## Installation
 

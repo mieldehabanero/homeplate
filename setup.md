@@ -145,10 +145,17 @@ refresh every Sleep Minutes whether or not anything changed.
 
 ### Display & OTA
 
-| Setting          | Description                                           | Default |
-|------------------|-------------------------------------------------------|---------|
-| Show Update Time | Display timestamp on image updates (`true`/`false`)   | `true`  |
-| Enable OTA       | Enable over-the-air firmware updates (`true`/`false`) | `false` |
+| Setting                | Description                                           | Default |
+|------------------------|-------------------------------------------------------|---------|
+| Show Update Time       | Display timestamp on image updates (`true`/`false`)   | `true`  |
+| Show Progress Messages | Display routine progress messages (`true`/`false`)    | `true`  |
+| Enable OTA             | Enable over-the-air firmware updates (`true`/`false`) | `false` |
+
+Turn **Show Progress Messages** off to skip panel updates for boot, WiFi
+connection, image download/rendering, and OTA progress. Progress is still logged
+to serial, and errors and low-battery warnings keep their existing display behavior.
+This setting is independent of **Show Update Time**, is saved across reboots, and
+can also be changed through the MQTT/Home Assistant switch without rebooting.
 
 ### Unchanged images
 
@@ -166,7 +173,8 @@ Two things worth knowing:
   reads from the last real update.
 - **The on-screen boot message is suppressed** on wakes that might skip the
   render, since a skip would leave it stranded over the unchanged image. It
-  still appears on cold boots and is always logged to serial.
+  appears on cold boots when Show Progress Messages is enabled and is always
+  logged to serial.
 - Anything that repaints the panel (a message, the info or QR screen, an error
   banner, a low-battery warning) drops the cached validator, so the next refresh
   redraws the image unconditionally.
