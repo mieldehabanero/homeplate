@@ -307,13 +307,13 @@ bool drawImageFromURL(const char *url) {
             reqHeaders["If-Modified-Since"] = imgLastModified;
     }
 
-    // displayStatusMessage paints on the panel, and a 304 skips the full update
+    // displayProgressMessage may paint on the panel, and a 304 skips the full update
     // that would otherwise wipe it — leaving "Downloading image..." stranded
     // over an image that never changed. Only announce the download when a
     // render is certain to follow.
     if (!conditional)
     {
-        displayStatusMessage("Downloading image...");
+        displayProgressMessage("Downloading image...");
     }
 
     // Intentionally the compile-time E_INK_* constants: this is a buffer size,
@@ -396,7 +396,7 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
     if (renderOk) {
         *renderOk = false;
     }
-    displayStatusMessage("Rendering image...");
+    displayProgressMessage("Rendering image...");
 
     displayStart();
 #ifdef INKPLATE_HAS_DISPLAY_MODES
@@ -544,6 +544,25 @@ uint16_t centerTextX(const char *t, int16_t x1, int16_t x2, int16_t y, bool lock
     if (lock)
         displayEnd();
     return h;
+}
+
+// NOTE I2C & display locks MUST NOT be held by caller.
+void displayProgressMessage(const char *format, ...)
+{
+    char buf[100];
+    va_list argptr;
+    va_start(argptr, format);
+    vsnprintf(buf, sizeof(buf), format, argptr);
+    va_end(argptr);
+
+    if (plateCfg.showProgressMessages)
+    {
+        displayStatusMessage("%s", buf);
+    }
+    else
+    {
+        Serial.printf("[STATUS] %s\n", buf);
+    }
 }
 
 // NOTE I2C & display locks MUST NOT be held by caller.

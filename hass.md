@@ -231,6 +231,7 @@ Settings that previously could only be changed through the WiFiManager setup por
 | TRMNL Logging | switch | `trmnl_log` | ON / OFF | next TRMNL activity |
 | Dither Kernel | select | `dither_kern` | `off` + each kernel name | next image render |
 | Show Update Time | switch | `disp_time` | ON / OFF | next render (see note) |
+| Show Progress Messages | switch | `show_progress` | ON / OFF | next progress message (no reboot) |
 | Timezone | text | `timezone` | POSIX TZ string | immediate (no reboot) |
 | Guest WiFi SSID | text | `qr_name` | up to 64 chars | next GuestWifi render |
 | Guest WiFi Password | text (password) | `qr_pass` | up to 64 chars | next GuestWifi render |
@@ -241,6 +242,13 @@ Settings that previously could only be changed through the WiFiManager setup por
 `Last-Modified`, HomePlate skips the render entirely when the image hasn't
 changed (see [setup.md](setup.md#unchanged-images)), so the on-screen timestamp
 only advances on refreshes that actually redrew something.
+
+**Show Progress Messages** defaults to ON. Turn it OFF to skip routine progress
+updates on the panel while retaining serial progress logs, errors, and
+low-battery warnings. It is independent of Show Update Time and uses the same
+saved value as the WiFi setup checkbox. Publish `ON` or `OFF` to
+`homeplate/<node>/config/show_progress/set`; the retained state is published to
+`homeplate/<node>/config/show_progress/state`.
 
 **Topics** (where `<node>` is `mqtt_node_id`, default `homeplate`):
 

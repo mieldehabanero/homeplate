@@ -50,6 +50,7 @@ struct HomePlateConfig {
 
     // Display
     bool displayLastUpdateTime;
+    bool showProgressMessages;
     // Image dithering kernel. 0 = None (no dithering, default). 1-7 map to
     // Image::DitherKernel enum values shifted by +1 (so 0 can mean "off"):
     //   1=FloydSteinberg, 2=JarvisJudiceNinke, 3=Atkinson, 4=Burkes,

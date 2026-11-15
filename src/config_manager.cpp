@@ -89,6 +89,7 @@ void logConfig()
 
     // Display & OTA
     Serial.printf("[CONFIG]   displayLastUpdate = %s\n", plateCfg.displayLastUpdateTime ? "true" : "false");
+    Serial.printf("[CONFIG]   showProgress      = %s\n", plateCfg.showProgressMessages ? "true" : "false");
     Serial.printf("[CONFIG]   ditherKernel      = %d\n", plateCfg.ditherKernel);
     Serial.printf("[CONFIG]   enableOta         = %s\n", plateCfg.enableOta ? "true" : "false");
 
@@ -137,6 +138,7 @@ void loadConfig()
     strlcpy(plateCfg.mqttDeviceName, MQTT_DEVICE_NAME, sizeof(plateCfg.mqttDeviceName));
     plateCfg.mqttExpireAfterSec = MQTT_EXPIRE_AFTER_SEC;
     plateCfg.displayLastUpdateTime = DISPLAY_LAST_UPDATE_TIME;
+    plateCfg.showProgressMessages = SHOW_PROGRESS_MESSAGES;
     plateCfg.ditherKernel = DITHER_KERNEL;
     plateCfg.enableOta = ENABLE_OTA;
 
@@ -168,6 +170,7 @@ void loadConfig()
     loadString("mqtt_devname", plateCfg.mqttDeviceName, sizeof(plateCfg.mqttDeviceName), plateCfg.mqttDeviceName);
     plateCfg.mqttExpireAfterSec = preferences.getUInt("mqtt_expire", plateCfg.mqttExpireAfterSec);
     plateCfg.displayLastUpdateTime = preferences.getBool("disp_time", plateCfg.displayLastUpdateTime);
+    plateCfg.showProgressMessages = preferences.getBool("show_progress", plateCfg.showProgressMessages);
     plateCfg.ditherKernel = preferences.getUChar("dither_kern", plateCfg.ditherKernel);
     plateCfg.enableOta = preferences.getBool("enable_ota", plateCfg.enableOta);
 
@@ -234,6 +237,7 @@ void saveConfig()
     saveString("mqtt_devname", plateCfg.mqttDeviceName);
     preferences.putUInt("mqtt_expire", plateCfg.mqttExpireAfterSec);
     preferences.putBool("disp_time", plateCfg.displayLastUpdateTime);
+    preferences.putBool("show_progress", plateCfg.showProgressMessages);
     preferences.putUChar("dither_kern", plateCfg.ditherKernel);
     preferences.putBool("enable_ota", plateCfg.enableOta);
     preferences.putBool("configured", true);
@@ -505,6 +509,7 @@ bool startWiFiManager(bool forcePortal)
     // Section: Display & OTA
     WiFiManagerParameter h_disp("<hr><h3>Display &amp; OTA</h3>");
     WiFiManagerParameter p_dtime("disp_time", "Show Update Time", "T", 2, plateCfg.displayLastUpdateTime ? "type=\"checkbox\" style=\"margin-top:0.5em\" checked" : "type=\"checkbox\" style=\"margin-top:0.5em\"", WFM_LABEL_AFTER);
+    WiFiManagerParameter p_progress("show_progress", "Show Progress Messages", "T", 2, plateCfg.showProgressMessages ? "type=\"checkbox\" style=\"margin-top:0.5em\" checked" : "type=\"checkbox\" style=\"margin-top:0.5em\"", WFM_LABEL_AFTER);
 
     // Dither kernel dropdown. ditherKernel == 0 means no dithering;
     // values 1..DITHER_KERNEL_COUNT map to Image::DitherKernel + 1. Both the
@@ -583,6 +588,7 @@ bool startWiFiManager(bool forcePortal)
 
     wm.addParameter(&h_disp);
     wm.addParameter(&p_dtime);
+    wm.addParameter(&p_progress);
     wm.addParameter(&p_dkern);
     wm.addParameter(&p_ota);
 
@@ -628,6 +634,7 @@ bool startWiFiManager(bool forcePortal)
         strlcpy(plateCfg.mqttDeviceName, p_mqdn.getValue(), sizeof(plateCfg.mqttDeviceName));
         plateCfg.mqttExpireAfterSec = atoi(p_mqexp.getValue());
         plateCfg.displayLastUpdateTime = (strncmp(p_dtime.getValue(), "T", 1) == 0);
+        plateCfg.showProgressMessages = (strncmp(p_progress.getValue(), "T", 1) == 0);
         int dk = atoi(wm.server->arg("dither_kern").c_str());
         plateCfg.ditherKernel = (dk >= 0 && dk <= DITHER_KERNEL_COUNT) ? (uint8_t)dk : 0;
         plateCfg.enableOta = (strncmp(p_ota.getValue(), "T", 1) == 0);
