@@ -217,7 +217,43 @@ delay, add `-DHOMEPLATE_BENCHMARK_REFRESH` to the benchmark environment's build
 flags before building. This performs a full refresh for each decoder and fixture.
 The benchmark environment is excluded from default builds and release artifacts.
 
-Hardware timings and visual confirmation on an Inkplate 10v2 remain pending.
+Hardware measurements on an Inkplate 10v2 (2026-11-15, implementation commit
+`ccf1177`, CPU configured at 240 MHz) produced these results for each full-screen
+pattern. Times are seconds; each pair shows original → direct decoding.
+
+| PNG depth | Pattern | Decode | Decode speedup | Decode + refresh + settle |
+|---|---|---:|---:|---:|
+| 1 bit | Dashboard | 2.646 → 0.226 | 11.71× | 4.707 → 2.286 |
+| 1 bit | Gradient | 2.638 → 0.225 | 11.72× | 4.698 → 2.285 |
+| 1 bit | Detailed | 2.639 → 0.226 | 11.67× | 4.701 → 2.289 |
+| 2 bits | Dashboard | 2.753 → 0.272 | 10.13× | 4.815 → 2.333 |
+| 2 bits | Gradient | 2.731 → 0.271 | 10.09× | 4.792 → 2.332 |
+| 2 bits | Detailed | 2.735 → 0.275 | 9.94× | 4.797 → 2.336 |
+| **4 bits** | **Dashboard** | **2.859 → 0.229** | **12.50×** | **4.921 → 2.291** |
+| **4 bits** | **Gradient** | **2.858 → 0.227** | **12.60×** | **4.921 → 2.289** |
+| **4 bits** | **Detailed** | **2.865 → 0.234** | **12.23×** | **4.929 → 2.297** |
+| 8 bits | Dashboard | 3.101 → 0.388 | 7.98× | 5.163 → 2.450 |
+| 8 bits | Gradient | 3.087 → 0.385 | 8.03× | 5.150 → 2.448 |
+| 8 bits | Detailed | 3.101 → 0.398 | 7.79× | 5.165 → 2.461 |
+
+For 4-bit PNGs, decoding plus a full panel refresh and the 250 ms settling delay
+took 4.921–4.929 s with the original decoder and 2.289–2.297 s with the shortcut:
+about 2.63 s saved, or 53% less time for that stage. Network transfer, framebuffer
+clearing, and progress-message painting are outside these measurements. Each
+full-refresh observation is one run per decoder and fixture; decode-only medians
+use twenty measured runs after two warmups, alternating decoder order.
+
+All 528 framebuffer comparisons matched byte for byte across the twelve fixtures.
+The device owner reported normal-looking patterns during the run. The 4-bit path
+allocated 44,962 bytes of temporary decoder workspace. Static firmware RAM usage
+was unchanged; a build comparison with the same version label added 2,372 bytes
+of flash. The [complete hardware measurements](benchmarks/inkplate10v2-grayscale.csv)
+include individual fixtures, timing ranges, workspace sizes, and refresh observations.
+After testing, the normal optimized firmware booted with its existing configuration,
+connected to WiFi and MQTT, and rendered an image through the shortcut. The first
+64 KiB of flash, covering the bootloader, partition table, NVS, and OTA selection
+data, matched the full backup byte for byte before and after the application-only
+update.
 
 ## Advanced: Compile-Time Configuration
 
