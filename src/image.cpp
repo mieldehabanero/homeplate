@@ -398,15 +398,37 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
     }
     displayProgressMessage("Rendering image...");
 
+    uint8_t effectiveKernel = (ditherOverride < 0) ? plateCfg.ditherKernel : (uint8_t)ditherOverride;
+    bool useDither = effectiveKernel != 0;
+    auto img = getImageInfo(buff, size);
+    int xLoc = 0;
+    int yLoc = 0;
+    if (center) {
+        if (img.width < HP_WIDTH) {
+            xLoc = (HP_WIDTH - img.width) / 2;
+        }
+        if (img.height < HP_HEIGHT) {
+            yLoc = (HP_HEIGHT - img.height) / 2;
+        }
+    }
+
     displayStart();
 #ifdef INKPLATE_HAS_DISPLAY_MODES
     display.selectDisplayMode(DISPLAY_MODE); // set grayscale mode
 #endif
-    display.clearDisplay();                   // refresh the display buffer before rendering.
+#ifdef ARDUINO_INKPLATE10V2
+    // A full-frame shortcut overwrites every pixel. Let the decoder establish
+    // PNG eligibility; its fallback below clears first if it cannot use the shortcut.
+    const bool deferClear = img.type == ImageType::PNG &&
+        img.width == E_INK_WIDTH && img.height == E_INK_HEIGHT &&
+        xLoc == 0 && yLoc == 0 && !useDither && display.getRotation() == 0;
+    if (!deferClear)
+#endif
+    {
+        display.clearDisplay();
+    }
     displayEnd();
 
-    uint8_t effectiveKernel = (ditherOverride < 0) ? plateCfg.ditherKernel : (uint8_t)ditherOverride;
-    bool useDither = effectiveKernel != 0;
     if (useDither) {
         // display.image is `Image` on B&W boards and `ImageColor` on the 6COLOR
         // board; both expose a class-local DitherKernel enum with identical
@@ -419,22 +441,13 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
         (ditherOverride >= 0) ? " (override)" : "");
 
     bool good = false;
-    auto img = getImageInfo(buff, size);
     if (img.type == ImageType::UNKNOWN) {
         Serial.println("[IMAGE][ERROR] Image render unknown type!");
         displayCriticalMessage("Unsupported Image");
         good = false;
     } else {
         Serial.printf("[IMAGE] Detected image as %s %dx%d\n", imageTypeToString(img.type), img.width, img.height);
-        int xLoc = 0;
-        int yLoc = 0;
         if (center) {
-            if (img.width < HP_WIDTH) {
-                xLoc = (HP_WIDTH - img.width) / 2;
-            }
-            if (img.height < HP_HEIGHT) {
-                yLoc = (HP_HEIGHT - img.height) / 2;
-            }
             Serial.printf("[IMAGE] Centering Image at %dx%d\n",xLoc, yLoc);
         }
         // display the image
@@ -454,6 +467,9 @@ bool drawImageFromBuffer(uint8_t *buff, size_t size, bool center, int8_t ditherO
                 options.cancelled = [](void *) { return stopActivity(); };
                 grayscale_png::Result result;
                 good = grayscale_png::render(buff, size, target, options, [&]() {
+                    if (deferClear) {
+                        display.clearDisplay();
+                    }
                     return display.image.drawPngFromBuffer(buff, size, xLoc, yLoc, useDither, false);
                 }, &result);
                 if (result != grayscale_png::Result::Unsupported) {

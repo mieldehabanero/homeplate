@@ -175,6 +175,16 @@ chunks retain CRC checking, and the compressed stream retains Adler checking.
 Malformed eligible images fail the render; they are not retried through fallback.
 Allocation failure falls back before any pixels are written.
 
+For full-screen 1200×825 images placed at (0, 0), a successful shortcut also
+skips the initial framebuffer clear: decoding overwrites every pixel, avoiding
+a redundant 495,000-byte memory fill. Smaller images still clear first to leave
+a white background outside the image. If a full-screen PNG needs the existing
+decoder, including because shortcut workspace allocation failed, the framebuffer
+is cleared before fallback. Invalid and cancelled renders retain their existing
+cleanup behavior. This does not change the physical panel refresh or its settling
+delay. The measurements below exclude framebuffer clearing and do not measure
+the additional saving from skipping it.
+
 Output matches the current non-dithered decoder: 1-bit samples map to 0/7, 2-bit
 samples to 0/2/5/7, 4-bit samples use `sample >> 1`, and 8-bit samples use
 `sample >> 5`. Gamma metadata retains the current decoder's treatment; this
